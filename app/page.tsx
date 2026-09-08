@@ -12,7 +12,7 @@ declare global { interface Window { ethereum?: EthereumProvider } }
 
 const TOKEN_CONTRACT = process.env.NEXT_PUBLIC_TOKEN_CONTRACT?.trim() || "";
 const REQUIRED_CHAIN_ID = process.env.NEXT_PUBLIC_CHAIN_ID?.trim() || "";
-const X_URL = process.env.NEXT_PUBLIC_X_URL?.trim() || "https://x.com/";
+const X_URL = process.env.NEXT_PUBLIC_X_URL?.trim() || "https://x.com/RBYuanQi";
 const fortunes = [
   "山水有相逢，来日皆可期。",
   "心有微光，终会照见远方。",
@@ -33,7 +33,7 @@ export default function Home() {
 
   const checkEligibility = async (address: string) => {
     if (!window.ethereum) return;
-    if (!TOKEN_CONTRACT) { setWalletState("unconfigured"); setEligible(true); return; }
+    if (!TOKEN_CONTRACT) { setWalletState("unconfigured"); setEligible(false); return; }
     setWalletState("checking");
     try {
       const chainId = String(await window.ethereum.request({ method: "eth_chainId" }));
@@ -59,14 +59,13 @@ export default function Home() {
     }, 1100);
   };
 
-  const connectWallet = async (drawAfterConnect = false) => {
+  const connectWallet = async () => {
     if (!window.ethereum) { alert("未检测到钱包，请先安装 MetaMask 或其他兼容钱包。"); return; }
     try {
       const accounts = await window.ethereum.request({ method: "eth_requestAccounts" }) as string[];
       const address = accounts[0] || "";
       setAccount(address);
       if (address) await checkEligibility(address);
-      if (address && drawAfterConnect && !TOKEN_CONTRACT) revealFortune();
     } catch { alert("钱包连接未完成，请在钱包中确认授权。"); }
   };
 
@@ -85,13 +84,14 @@ export default function Home() {
   }, [account]);
 
   const drawFortune = async () => {
-    if (!account) { await connectWallet(true); return; }
-    if (TOKEN_CONTRACT && !eligible) { alert(walletState === "wrong-chain" ? "请切换到指定网络后再试。" : "当前钱包未持有缘代币，暂时无法抽签。"); return; }
+    if (!TOKEN_CONTRACT) { alert("代币合约尚未配置，正式合约接入后开放抽签。"); return; }
+    if (!account) { await connectWallet(); return; }
+    if (!eligible) { alert(walletState === "wrong-chain" ? "请切换到指定网络后再试。" : "当前钱包未持有缘代币，暂时无法抽签。"); return; }
     revealFortune();
   };
 
   const walletLabel = account ? shortAddress(account) : "连接钱包";
-  const accessText = walletState === "ready" ? "已验证持币资格 · 可抽签" : walletState === "empty" ? "未持有缘代币" : walletState === "checking" ? "正在验证持币资格…" : walletState === "wrong-chain" ? "请切换至指定网络" : walletState === "unconfigured" ? "体验模式已开放 · 可抽签" : "连接钱包开启今日缘签";
+  const accessText = walletState === "ready" ? "已验证持币资格 · 可抽签" : walletState === "empty" ? "未持有缘代币 · 无法抽签" : walletState === "checking" ? "正在验证代币余额…" : walletState === "wrong-chain" ? "请切换至指定网络" : walletState === "unconfigured" ? "代币合约待配置 · 抽签未开放" : TOKEN_CONTRACT ? "连接钱包并验证持币资格" : "等待代币合约配置";
 
   return (
     <main>
